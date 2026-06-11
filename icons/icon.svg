@@ -1,0 +1,50 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="512" height="512" viewBox="0 0 512 512">
+  <defs>
+    <linearGradient id="bg" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0" stop-color="#3C3489"/>
+      <stop offset="0.55" stop-color="#085041"/>
+      <stop offset="1" stop-color="#633806"/>
+    </linearGradient>
+    <linearGradient id="page" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#ffffff"/>
+      <stop offset="1" stop-color="#efe9dc"/>
+    </linearGradient>
+  </defs>
+
+  <rect width="512" height="512" rx="112" fill="url(#bg)"/>
+
+  <!-- glow -->
+  <circle cx="256" cy="150" r="46" fill="#f6d77a" opacity="0.95"/>
+  <circle cx="256" cy="150" r="74" fill="#f6d77a" opacity="0.18"/>
+
+  <!-- open book -->
+  <g>
+    <!-- left page -->
+    <path d="M256 196
+             C 214 168, 150 162, 104 174
+             L 104 366
+             C 150 354, 214 360, 256 388
+             Z" fill="url(#page)"/>
+    <!-- right page -->
+    <path d="M256 196
+             C 298 168, 362 162, 408 174
+             L 408 366
+             C 362 354, 298 360, 256 388
+             Z" fill="url(#page)"/>
+    <!-- spine -->
+    <rect x="251" y="194" width="10" height="196" rx="5" fill="#cdbf9f"/>
+
+    <!-- text lines left -->
+    <g fill="#3C3489" opacity="0.5">
+      <rect x="132" y="212" width="96" height="11" rx="5.5"/>
+      <rect x="132" y="240" width="96" height="11" rx="5.5"/>
+      <rect x="132" y="268" width="80" height="11" rx="5.5"/>
+    </g>
+    <!-- text lines right -->
+    <g fill="#085041" opacity="0.5">
+      <rect x="284" y="212" width="96" height="11" rx="5.5"/>
+      <rect x="284" y="240" width="96" height="11" rx="5.5"/>
+      <rect x="284" y="268" width="80" height="11" rx="5.5"/>
+    </g>
+  </g>
+</svg>

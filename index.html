@@ -1,0 +1,878 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<title>Plan Sabiduría</title>
+<meta name="description" content="Tracker de lectura bíblica de 49 días: Eclesiastés, Proverbios y Salmos." />
+
+<!-- PWA / iOS -->
+<link rel="manifest" href="manifest.json" />
+<meta name="theme-color" content="#3C3489" media="(prefers-color-scheme: light)" />
+<meta name="theme-color" content="#13111f" media="(prefers-color-scheme: dark)" />
+<meta name="apple-mobile-web-app-capable" content="yes" />
+<meta name="mobile-web-app-capable" content="yes" />
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+<meta name="apple-mobile-web-app-title" content="Sabiduría" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+
+<style>
+:root {
+  --ec: #3C3489;        /* Eclesiastés - morado */
+  --pr: #085041;        /* Proverbios - verde */
+  --sa: #633806;        /* Salmos - ámbar */
+  --b1: #3C3489;        /* Bloque I morado */
+  --b2: #085041;        /* Bloque II verde */
+  --b3: #9a6a00;        /* Bloque III ámbar */
+  --b4: #5b5b66;        /* Bloque IV gris */
+
+  --bg: #f6f5fa;
+  --surface: #ffffff;
+  --surface-2: #efedf5;
+  --text: #1b1a23;
+  --text-dim: #5d5b6b;
+  --border: #e3e0ec;
+  --accent: #3C3489;
+  --accent-text: #ffffff;
+  --shadow: 0 1px 3px rgba(20,16,40,.08), 0 1px 2px rgba(20,16,40,.06);
+  --radius: 16px;
+  --nav-h: 64px;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #13111f;
+    --surface: #1e1b2b;
+    --surface-2: #272338;
+    --text: #f0eef7;
+    --text-dim: #a9a4bd;
+    --border: #322d44;
+    --accent: #8a7fe0;
+    --accent-text: #15121f;
+    --b1: #8a7fe0;
+    --b2: #34a98c;
+    --b3: #d99a1e;
+    --b4: #9a96a8;
+    --ec: #8a7fe0;
+    --pr: #34a98c;
+    --sa: #d99a1e;
+    --shadow: 0 1px 3px rgba(0,0,0,.4);
+  }
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html, body { margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  font-size: 17px;
+  line-height: 1.5;
+  -webkit-font-smoothing: antialiased;
+  padding-bottom: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  overscroll-behavior-y: none;
+}
+
+button { font-family: inherit; cursor: pointer; }
+
+/* ---------- App shell ---------- */
+#app {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: calc(env(safe-area-inset-top) + 14px) 18px 24px;
+  min-height: 100vh;
+}
+
+.screen { display: none; animation: fade .28s ease; }
+.screen.active { display: block; }
+@keyframes fade {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.app-title { font-size: 1.7rem; font-weight: 800; letter-spacing: -.02em; margin: 4px 0 2px; }
+.app-sub { color: var(--text-dim); margin: 0 0 20px; font-size: .98rem; }
+
+h2.section { font-size: 1.05rem; font-weight: 700; margin: 22px 0 12px; }
+
+/* ---------- Cards ---------- */
+.card {
+  background: var(--surface);
+  border-radius: var(--radius);
+  box-shadow: var(--shadow);
+  border: 1px solid var(--border);
+}
+.pad { padding: 18px; }
+
+/* ---------- Progress ---------- */
+.progress-wrap { margin-bottom: 8px; }
+.progress-track {
+  height: 14px; border-radius: 99px; background: var(--surface-2);
+  overflow: hidden; border: 1px solid var(--border);
+}
+.progress-bar {
+  height: 100%; width: 0;
+  background: linear-gradient(90deg, var(--ec), var(--sa));
+  border-radius: 99px; transition: width .5s cubic-bezier(.4,0,.2,1);
+}
+.progress-meta { display: flex; justify-content: space-between; margin-top: 8px; font-size: .9rem; color: var(--text-dim); }
+.progress-meta b { color: var(--text); }
+
+/* ---------- Stats ---------- */
+.stats { display: grid; grid-template-columns: repeat(3,1fr); gap: 10px; margin-top: 14px; }
+.stat { background: var(--surface); border: 1px solid var(--border); border-radius: 14px; padding: 14px 10px; text-align: center; box-shadow: var(--shadow); }
+.stat .num { font-size: 1.6rem; font-weight: 800; line-height: 1; }
+.stat .lbl { font-size: .72rem; color: var(--text-dim); margin-top: 6px; text-transform: uppercase; letter-spacing: .03em; }
+
+/* ---------- CTA ---------- */
+.cta {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; min-height: 52px; margin-top: 16px;
+  border: none; border-radius: 14px;
+  background: var(--accent); color: var(--accent-text);
+  font-size: 1.05rem; font-weight: 700;
+  transition: transform .12s ease, opacity .2s;
+}
+.cta:active { transform: scale(.98); }
+
+.today-hint { margin-top: 18px; }
+.today-hint .k { font-size: .78rem; color: var(--text-dim); text-transform: uppercase; letter-spacing: .04em; }
+.today-hint .v { font-size: 1.15rem; font-weight: 700; margin-top: 2px; }
+
+/* ---------- Badges ---------- */
+.badges { display: flex; flex-wrap: wrap; gap: 6px; }
+.badge {
+  font-size: .72rem; font-weight: 700; padding: 3px 9px; border-radius: 99px;
+  color: #fff; letter-spacing: .02em;
+}
+.badge.ec { background: var(--ec); }
+.badge.pr { background: var(--pr); }
+.badge.sa { background: var(--sa); }
+
+/* ---------- Day list / blocks ---------- */
+.block-head { display: flex; align-items: center; gap: 10px; margin: 26px 0 12px; }
+.block-dot { width: 14px; height: 14px; border-radius: 5px; flex: none; }
+.block-head h3 { margin: 0; font-size: 1rem; font-weight: 800; }
+.block-head .rng { margin-left: auto; font-size: .78rem; color: var(--text-dim); }
+
+.daycard {
+  display: flex; align-items: center; gap: 12px;
+  width: 100%; text-align: left;
+  background: var(--surface); border: 1px solid var(--border);
+  border-left: 4px solid var(--bl, var(--b1));
+  border-radius: 12px; padding: 12px 14px; margin-bottom: 9px;
+  box-shadow: var(--shadow); color: var(--text);
+  transition: transform .12s ease, background .2s;
+}
+.daycard:active { transform: scale(.99); background: var(--surface-2); }
+.daycard .dnum {
+  flex: none; width: 38px; height: 38px; border-radius: 10px;
+  background: var(--surface-2); display: grid; place-items: center;
+  font-weight: 800; font-size: .95rem;
+}
+.daycard .dbody { flex: 1; min-width: 0; }
+.daycard .dtema { font-weight: 700; font-size: .96rem; line-height: 1.25; }
+.daycard .dmeta { margin-top: 5px; }
+.daycard .dcheck {
+  flex: none; width: 26px; height: 26px; border-radius: 50%;
+  border: 2px solid var(--border); display: grid; place-items: center;
+  font-size: 15px; color: transparent;
+}
+.daycard.done .dcheck { background: #1faf6a; border-color: #1faf6a; color: #fff; }
+.daycard.done .dnum { background: rgba(31,175,106,.14); }
+
+/* ---------- Day detail ---------- */
+.detail-top { display: flex; align-items: baseline; gap: 10px; margin-bottom: 4px; }
+.detail-top .dlabel { font-size: .8rem; color: var(--text-dim); font-weight: 700; letter-spacing: .04em; text-transform: uppercase; }
+.detail-tema { font-size: 1.45rem; font-weight: 800; letter-spacing: -.01em; margin: 2px 0 14px; line-height: 1.2; }
+
+.readings { display: flex; flex-wrap: wrap; gap: 8px; margin: 14px 0 4px; }
+.reading-chip {
+  font-size: .9rem; font-weight: 600; padding: 7px 12px; border-radius: 10px;
+  background: var(--surface-2); border: 1px solid var(--border);
+}
+
+.lead { font-size: .78rem; text-transform: uppercase; letter-spacing: .05em; color: var(--text-dim); font-weight: 700; margin: 22px 0 6px; }
+.reflexion { font-size: 1.05rem; line-height: 1.6; }
+.conexion {
+  border-left: 4px solid var(--bl, var(--accent));
+  padding: 10px 0 10px 14px; margin-top: 10px;
+  font-size: 1rem; color: var(--text); background: var(--surface-2);
+  border-radius: 0 10px 10px 0;
+}
+
+.mark-btn {
+  display: flex; align-items: center; justify-content: center; gap: 8px;
+  width: 100%; min-height: 52px; margin: 22px 0 8px;
+  border: 2px solid var(--accent); border-radius: 14px;
+  background: transparent; color: var(--accent);
+  font-size: 1.02rem; font-weight: 700; transition: all .15s;
+}
+.mark-btn.done { background: #1faf6a; border-color: #1faf6a; color: #fff; }
+.mark-btn:active { transform: scale(.98); }
+
+.notes-label { display: flex; align-items: center; justify-content: space-between; }
+.notes-label .saved { font-size: .78rem; color: #1faf6a; opacity: 0; transition: opacity .3s; }
+.notes-label .saved.show { opacity: 1; }
+textarea.notes {
+  width: 100%; min-height: 120px; resize: vertical;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface); color: var(--text);
+  padding: 12px 14px; font-size: 1rem; font-family: inherit; line-height: 1.5;
+  margin-top: 6px;
+}
+textarea.notes:focus { outline: 2px solid var(--accent); border-color: transparent; }
+
+.day-nav { display: flex; gap: 10px; margin-top: 18px; }
+.day-nav button {
+  flex: 1; min-height: 48px; border-radius: 12px;
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  font-weight: 700; font-size: .95rem;
+}
+.day-nav button:disabled { opacity: .4; }
+.day-nav button:active:not(:disabled) { background: var(--surface-2); }
+
+.back-btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  background: none; border: none; color: var(--accent);
+  font-size: 1rem; font-weight: 700; padding: 6px 0; margin-bottom: 8px;
+}
+
+/* ---------- Settings ---------- */
+.row { display: flex; align-items: center; gap: 14px; padding: 16px 0; border-bottom: 1px solid var(--border); }
+.row:last-child { border-bottom: none; }
+.row .rlbl { flex: 1; }
+.row .rlbl .t { font-weight: 700; }
+.row .rlbl .s { font-size: .85rem; color: var(--text-dim); margin-top: 2px; }
+
+.switch { position: relative; width: 52px; height: 31px; flex: none; }
+.switch input { opacity: 0; width: 0; height: 0; }
+.slider {
+  position: absolute; inset: 0; background: var(--surface-2);
+  border: 1px solid var(--border); border-radius: 99px; transition: .25s;
+}
+.slider::before {
+  content: ""; position: absolute; height: 25px; width: 25px; left: 2px; top: 2px;
+  background: #fff; border-radius: 50%; transition: .25s; box-shadow: 0 1px 3px rgba(0,0,0,.3);
+}
+.switch input:checked + .slider { background: var(--accent); border-color: var(--accent); }
+.switch input:checked + .slider::before { transform: translateX(21px); }
+
+input[type="time"] {
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  border-radius: 10px; padding: 8px 12px; font-size: 1rem; font-family: inherit;
+}
+
+.danger {
+  width: 100%; min-height: 50px; margin-top: 18px;
+  border: 1px solid #d24b4b; border-radius: 12px;
+  background: transparent; color: #d24b4b; font-weight: 700; font-size: 1rem;
+}
+.danger:active { background: rgba(210,75,75,.1); }
+
+.settings-foot { text-align: center; color: var(--text-dim); font-size: .8rem; margin-top: 26px; }
+
+/* ---------- Bottom nav ---------- */
+.bottom-nav {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 50;
+  height: calc(var(--nav-h) + env(safe-area-inset-bottom));
+  padding-bottom: env(safe-area-inset-bottom);
+  background: color-mix(in srgb, var(--surface) 92%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(18px);
+  backdrop-filter: saturate(180%) blur(18px);
+  border-top: 1px solid var(--border);
+  display: flex;
+}
+.tab {
+  flex: 1; background: none; border: none; color: var(--text-dim);
+  display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 3px;
+  font-size: .7rem; font-weight: 600; padding-top: 8px;
+}
+.tab svg { width: 24px; height: 24px; }
+.tab.active { color: var(--accent); }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div id="app">
+
+  <!-- ============ HOME / TODAY ============ -->
+  <section id="screen-home" class="screen active">
+    <h1 class="app-title">Plan Sabiduría</h1>
+    <p class="app-sub">Eclesiastés · Proverbios · Salmos — 49 días</p>
+
+    <div class="card pad progress-wrap">
+      <div class="progress-track"><div class="progress-bar" id="homeBar"></div></div>
+      <div class="progress-meta">
+        <span><b id="homeDone">0</b> de 49 días</span>
+        <span id="homePct">0%</span>
+      </div>
+
+      <div class="today-hint">
+        <div class="k">Tu próximo día</div>
+        <div class="v" id="homeNextLabel">Día 1 — La búsqueda del sentido</div>
+      </div>
+      <button class="cta" id="goTodayBtn">Ir al día de hoy →</button>
+    </div>
+
+    <div class="stats">
+      <div class="stat"><div class="num" id="stDone">0</div><div class="lbl">Completados</div></div>
+      <div class="stat"><div class="num" id="stStreak">0</div><div class="lbl">Racha</div></div>
+      <div class="stat"><div class="num" id="stNotes">0</div><div class="lbl">Con nota</div></div>
+    </div>
+
+    <h2 class="section">Los cuatro bloques</h2>
+    <div id="homeBlocks"></div>
+  </section>
+
+  <!-- ============ DAYS LIST ============ -->
+  <section id="screen-days" class="screen">
+    <h1 class="app-title">Los 49 días</h1>
+    <p class="app-sub">Toca un día para abrir su lectura y notas</p>
+    <div id="daysList"></div>
+  </section>
+
+  <!-- ============ DAY DETAIL ============ -->
+  <section id="screen-detail" class="screen">
+    <button class="back-btn" id="detailBack">‹ Volver</button>
+    <div id="detailBody"></div>
+  </section>
+
+  <!-- ============ SETTINGS ============ -->
+  <section id="screen-settings" class="screen">
+    <h1 class="app-title">Ajustes</h1>
+    <p class="app-sub">Recordatorios y datos</p>
+
+    <div class="card pad">
+      <div class="row">
+        <div class="rlbl">
+          <div class="t">Recordatorio diario</div>
+          <div class="s">Notificación para no perder tu lectura</div>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="notifToggle" />
+          <span class="slider"></span>
+        </label>
+      </div>
+      <div class="row">
+        <div class="rlbl">
+          <div class="t">Hora del recordatorio</div>
+          <div class="s">Se programa mientras la app esté abierta</div>
+        </div>
+        <input type="time" id="notifTime" value="08:00" />
+      </div>
+    </div>
+
+    <button class="danger" id="resetBtn">Resetear todo el progreso</button>
+
+    <div class="settings-foot">
+      Plan Sabiduría · v1 · Tus datos se guardan solo en este dispositivo.
+    </div>
+  </section>
+
+</div>
+
+<!-- ============ BOTTOM NAV ============ -->
+<nav class="bottom-nav">
+  <button class="tab active" data-tab="home">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 11l9-8 9 8"/><path d="M5 10v10h14V10"/></svg>
+    Hoy
+  </button>
+  <button class="tab" data-tab="days">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M3 9h18M8 2v4M16 2v4"/></svg>
+    Días
+  </button>
+  <button class="tab" data-tab="settings">
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 8 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H2a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 3.6 8a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 8 3.6 1.65 1.65 0 0 0 9 2.09V2a2 2 0 0 1 4 0v.09A1.65 1.65 0 0 0 14 3.6a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 20.4 8c.14.43.55.74 1.02.78H22a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+    Ajustes
+  </button>
+</nav>
+
+<script>
+/* =====================================================================
+   DATOS DEL PLAN — 49 días
+   ===================================================================== */
+const LIBRO = {
+  Ec: { nombre: "Eclesiastés", cls: "ec" },
+  Pr: { nombre: "Proverbios",  cls: "pr" },
+  Sa: { nombre: "Salmos",      cls: "sa" }
+};
+
+const BLOQUES = {
+  1: { titulo: "Bloque I · Eclesiastés como ancla",  rango: "Días 1–15",  var: "--b1" },
+  2: { titulo: "Bloque II · Proverbios como mapa",    rango: "Días 16–28", var: "--b2" },
+  3: { titulo: "Bloque III · Salmos en profundidad",  rango: "Días 29–43", var: "--b3" },
+  4: { titulo: "Bloque IV · Síntesis y cierre",       rango: "Días 44–49", var: "--b4" }
+};
+
+const PLAN = [
+  { dia:1, bloque:1, tema:"La búsqueda del sentido", libros:["Ec","Sa"], lecturas:["Ec 1","Sal 1–2"],
+    reflexion:"¿Por qué buscamos sentido? Eclesiastés abre con la pregunta más radical: todo parece vanidad. Los Salmos 1 y 2 responden con una dirección: el camino del sabio.",
+    conexion:"Ec 1 plantea la pregunta; Sal 1 ofrece la primera pista de respuesta." },
+  { dia:2, bloque:1, tema:"Trabajo y esfuerzo humano", libros:["Ec","Pr"], lecturas:["Ec 2","Pr 6:6–11","Pr 10:4–5"],
+    reflexion:"¿Para qué trabajamos? Eclesiastés cuestiona el valor del esfuerzo; Proverbios defiende la diligencia sin romantizarla.",
+    conexion:"Ambos libros miran el trabajo pero desde ángulos opuestos. La tensión entre ellos es fértil." },
+  { dia:3, bloque:1, tema:"El tiempo y sus estaciones", libros:["Ec","Sa"], lecturas:["Ec 3","Sal 90"],
+    reflexion:"El poema de los tiempos en Ec 3 y el Salmo 90 son los dos textos más profundos sobre la temporalidad humana. Léelos despacio.",
+    conexion:"Ec 3 describe los ciclos; Sal 90 los sitúa ante la eternidad de Dios." },
+  { dia:4, bloque:1, tema:"La injusticia del mundo", libros:["Ec","Sa"], lecturas:["Ec 4:1–16","Sal 10","Sal 12"],
+    reflexion:"¿Qué hacemos cuando el mundo no es justo? Eclesiastés observa; los Salmos claman.",
+    conexion:"El observador de Ec 4 y el que ora en Sal 10 ven lo mismo pero responden distinto." },
+  { dia:5, bloque:1, tema:"Las palabras y el silencio", libros:["Ec","Pr","Sa"], lecturas:["Ec 5:1–7","Pr 10:19","Pr 17:27–28","Sal 141:3"],
+    reflexion:"Tres libros, un mismo consejo: cuidar lo que sale de la boca.",
+    conexion:"Primer día donde los tres libros hablan con una sola voz." },
+  { dia:6, bloque:1, tema:"Riqueza y sus trampas", libros:["Ec","Pr"], lecturas:["Ec 5:8–20","Pr 11:28","Pr 13:11","Pr 23:4–5"],
+    reflexion:"El dinero no es malo, pero no resuelve el problema de fondo.",
+    conexion:"Ec 5 describe la trampa; Pr la cartografía con detalle." },
+  { dia:7, bloque:1, tema:"Gratitud y presencia", libros:["Ec","Sa"], lecturas:["Ec 6","Sal 23","Sal 34"],
+    reflexion:"Ec 6 describe al hombre que tiene todo y no disfruta nada. Sal 23 y 34 son el antídoto.",
+    conexion:"El contraste es máximo aquí. Dos respuestas a la misma vida." },
+  { dia:8, bloque:1, tema:"La sabiduría como ventaja", libros:["Ec","Pr"], lecturas:["Ec 7:1–14","Pr 1:1–7","Pr 2:1–11"],
+    reflexion:"¿Qué es realmente la sabiduría? No es inteligencia: es orientación.",
+    conexion:"Ec 7 habla de sabiduría ganada por experiencia; Pr 1–2 de sabiduría recibida como don." },
+  { dia:9, bloque:1, tema:"Nadie es del todo justo", libros:["Ec","Sa"], lecturas:["Ec 7:15–29","Sal 14","Sal 53"],
+    reflexion:"La condición humana. No hay nadie recto del todo. ¿Cómo vivir con eso?",
+    conexion:"Ec 7:20 y Sal 14:3 dicen casi exactamente lo mismo. Léelos juntos." },
+  { dia:10, bloque:1, tema:"El poder y sus límites", libros:["Ec","Pr","Sa"], lecturas:["Ec 8","Pr 16:10–15","Sal 82"],
+    reflexion:"El poder humano tiene una sombra. Ec 8 la describe, Pr la aconseja navegar, Sal 82 la confronta.",
+    conexion:"Tres perspectivas sobre la autoridad: filosófica, práctica y profética." },
+  { dia:11, bloque:1, tema:"La muerte como maestra", libros:["Ec","Sa"], lecturas:["Ec 9","Sal 49","Sal 73"],
+    reflexion:"La muerte no es el tema; la vida bien vivida es el tema.",
+    conexion:"Ec 9 acepta la muerte con honestidad; Sal 49 y 73 la trascienden con esperanza." },
+  { dia:12, bloque:1, tema:"Pequeñas decisiones, grandes consecuencias", libros:["Pr","Sa"], lecturas:["Pr 3:1–12","Pr 4:20–27","Sal 37:1–11"],
+    reflexion:"La vida se construye en las decisiones cotidianas.",
+    conexion:"Pr da el consejo; Sal 37 da la paz para seguirlo sin ansiedad." },
+  { dia:13, bloque:1, tema:"La locura y la sabiduría", libros:["Ec","Pr"], lecturas:["Ec 10","Pr 26:1–12"],
+    reflexion:"Los dos textos más irónicos de la Biblia. La necedad tiene sus propias reglas absurdas.",
+    conexion:"Uno describe al necio, el otro aconseja esquivarlo." },
+  { dia:14, bloque:1, tema:"Arriesgar y soltar", libros:["Ec","Sa"], lecturas:["Ec 11","Sal 127","Sal 128"],
+    reflexion:"Ec 11 es quizás el texto bíblico más emprendedor: lanza tu pan sobre las aguas.",
+    conexion:"Iniciativa humana y dependencia divina, en tensión fértil." },
+  { dia:15, bloque:1, tema:"El fin como comienzo", libros:["Ec","Sa"], lecturas:["Ec 12","Sal 150"],
+    reflexion:"Cierre de Eclesiastés y del libro de los Salmos en el mismo día. Ambos terminan con alabanza.",
+    conexion:"Ec 12 resume la vida; Sal 150 la celebra." },
+  { dia:16, bloque:2, tema:"La madre de todos los vicios", libros:["Pr","Sa"], lecturas:["Pr 6:16–19","Pr 8:13","Sal 18:27"],
+    reflexion:"El orgullo. Los tres textos lo señalan como el origen de la mayoría de los errores.",
+    conexion:"Pr lo cataloga; Sal 18 describe al Dios que lo resiste." },
+  { dia:17, bloque:2, tema:"Amistades y compañías", libros:["Pr","Sa"], lecturas:["Pr 12:26","Pr 13:20","Pr 27:17","Sal 1:1","Sal 119:63"],
+    reflexion:"Con quién te rodeas define en gran parte quién serás.",
+    conexion:"Pr es prescriptivo; Sal 1 abre el libro entero con exactamente este tema." },
+  { dia:18, bloque:2, tema:"El corazón como centro", libros:["Pr","Sa"], lecturas:["Pr 4:23","Pr 23:7","Sal 51:10","Sal 139:23–24"],
+    reflexion:"El corazón en la Biblia no es el órgano del sentimiento: es el centro de la voluntad.",
+    conexion:"Pr guarda el corazón; Sal 51 y 139 piden que Dios lo examine y renueve." },
+  { dia:19, bloque:2, tema:"La lengua: fuego y medicina", libros:["Pr","Sa"], lecturas:["Pr 12:18","Pr 15:1–4","Pr 18:21","Sal 19:14"],
+    reflexion:"Las palabras pueden construir o destruir.",
+    conexion:"Pr describe el poder de la lengua; Sal 19 pide que sean aceptables ante Dios." },
+  { dia:20, bloque:2, tema:"Honestidad y confianza", libros:["Pr","Sa"], lecturas:["Pr 11:1–3","Pr 20:23","Sal 15","Sal 24:3–5"],
+    reflexion:"¿Quién puede habitar en el monte santo? Sal 15 responde con integridades concretas que Pr elabora.",
+    conexion:"Sal 15 es el estándar ético; Pr lo desglosa en situaciones cotidianas." },
+  { dia:21, bloque:2, tema:"Generosidad y escasez", libros:["Pr","Sa"], lecturas:["Pr 11:24–25","Pr 19:17","Sal 112"],
+    reflexion:"La paradoja de la generosidad: quien da más tiene más.",
+    conexion:"Pr enuncia el principio; Sal 112 describe la vida completa del hombre generoso." },
+  { dia:22, bloque:2, tema:"El hijo y la formación", libros:["Pr","Sa"], lecturas:["Pr 22:6","Pr 29:15–17","Sal 78:1–8"],
+    reflexion:"La transmisión de valores entre generaciones. ¿Qué estás pasando adelante?",
+    conexion:"Pr da instrucción directa; Sal 78 narra la responsabilidad histórica de hacerlo." },
+  { dia:23, bloque:2, tema:"Controlar la ira", libros:["Pr","Sa"], lecturas:["Pr 14:17","Pr 15:18","Pr 19:11","Sal 4","Sal 37:8"],
+    reflexion:"La ira es cara. ¿Cuánto te ha costado perder la paciencia?",
+    conexion:"Pr describe consecuencias; Sal 4 y 37 ofrecen el camino de la quietud." },
+  { dia:24, bloque:2, tema:"Planes y propósitos", libros:["Pr","Sa"], lecturas:["Pr 16:1–9","Pr 19:21","Sal 20","Sal 33:10–11"],
+    reflexion:"Planea con todo, pero no te aferres al plan.",
+    conexion:"Pr 16:1–9 es el texto más equilibrado sobre agencia humana y soberanía divina." },
+  { dia:25, bloque:2, tema:"La esperanza del pobre", libros:["Pr","Sa"], lecturas:["Pr 14:31","Pr 19:17","Sal 9:18","Sal 72:12–14"],
+    reflexion:"Los libros sapienciales no ignoran la pobreza.",
+    conexion:"Pr liga la atención al pobre con honrar a Dios; Sal la vincula con la justicia del rey." },
+  { dia:26, bloque:2, tema:"La mujer capaz", libros:["Pr","Sa"], lecturas:["Pr 31:10–31","Sal 128"],
+    reflexion:"Pr 31 no es una lista de deberes: es un poema de admiración.",
+    conexion:"Pr 31 describe; Sal 128 sitúa esa vida en el contexto de la familia y la bendición." },
+  { dia:27, bloque:2, tema:"Confianza plena", libros:["Pr","Sa"], lecturas:["Pr 3:5–8","Sal 46","Sal 62"],
+    reflexion:"Descansar en algo más grande que uno mismo. ¿En qué confías cuando todo falla?",
+    conexion:"Pr 3:5 es el mandato; Sal 46 y 62 son su expresión oracional más pura." },
+  { dia:28, bloque:2, tema:"La disciplina y el dolor", libros:["Pr","Sa"], lecturas:["Pr 3:11–12","Pr 12:1","Sal 119:71","Sal 119:75"],
+    reflexion:"El dolor que forma. A veces el más difícil es el que más te cambia.",
+    conexion:"Pr enuncia el principio; Sal 119 lo vive en primera persona." },
+  { dia:29, bloque:3, tema:"Releer todo", libros:["Ec","Pr","Sa"], lecturas:["Ec 3:1–8","Pr 16:1–9","Sal 46","Sal 90:12"],
+    reflexion:"Día de síntesis. Cuatro textos leídos antes, ahora con semanas de contexto encima.",
+    conexion:"Estos cuatro textos son el corazón temático del plan." },
+  { dia:30, bloque:3, tema:"Alabanza en el desierto", libros:["Sa"], lecturas:["Sal 22","Sal 42","Sal 43"],
+    reflexion:"Los Salmos más honestos sobre el abandono. No para encontrar respuestas, sino compañía.",
+    conexion:"Sal 22 abre con el abandono más crudo; Sal 42–43 son un díptico de sed y esperanza." },
+  { dia:31, bloque:3, tema:"Alabanza en la abundancia", libros:["Sa"], lecturas:["Sal 103","Sal 104"],
+    reflexion:"Sal 103 alaba por lo que Dios hace; Sal 104 por lo que Dios es.",
+    conexion:"Contrasta con el día anterior. ¿Qué cambia entre el desierto y la abundancia?" },
+  { dia:32, bloque:3, tema:"Historia y memoria", libros:["Sa"], lecturas:["Sal 105","Sal 106"],
+    reflexion:"Sal 105 recuerda las maravillas; Sal 106 las infidelidades. La memoria completa, sin editar.",
+    conexion:"Recordar bien —lo bueno y lo malo— es una forma de sabiduría práctica." },
+  { dia:33, bloque:3, tema:"Los salmos graduales I", libros:["Sa"], lecturas:["Sal 120–128"],
+    reflexion:"Los salmos de las subidas. Ocho salmos breves, cada uno una joya. Léelos como una caminata.",
+    conexion:"Sal 127 ya apareció en el día 14. ¿Lo ves diferente ahora en su contexto?" },
+  { dia:34, bloque:3, tema:"Los salmos graduales II", libros:["Sa"], lecturas:["Sal 129–134"],
+    reflexion:"Cierre de los salmos graduales. Sal 131: quietud del alma.",
+    conexion:"Sal 133 sobre unidad fraternal conecta con Pr 17:17 y Pr 18:24." },
+  { dia:35, bloque:3, tema:"La Torá como objeto de amor", libros:["Sa","Pr"], lecturas:["Sal 19:7–14","Sal 119:1–32","Pr 6:23"],
+    reflexion:"La ley no como carga: como luz.",
+    conexion:"Sal 19 y Pr 6:23 comparten la misma metáfora: la instrucción como lámpara." },
+  { dia:36, bloque:3, tema:"Continuación del salmo 119", libros:["Sa"], lecturas:["Sal 119:33–96"],
+    reflexion:"El salmo más meditativo de todos. Elige tres versículos y quédate con ellos.",
+    conexion:"Sal 119 incorpora temas de Ec (incertidumbre) y Pr (disciplina)." },
+  { dia:37, bloque:3, tema:"Cierre del salmo 119", libros:["Sa"], lecturas:["Sal 119:97–176"],
+    reflexion:"Terminas el salmo más largo de la Biblia. ¿Qué versículo te persiguió durante los tres días?",
+    conexion:"Sal 119 es el puente más largo entre los tres libros." },
+  { dia:38, bloque:3, tema:"La creación habla", libros:["Sa","Pr"], lecturas:["Sal 19:1–6","Sal 104:24–30","Pr 8:22–31"],
+    reflexion:"Pr 8:22–31 es uno de los textos más bellos: la Sabiduría como arquitecta del mundo.",
+    conexion:"Los tres textos contemplan la creación como fuente de conocimiento." },
+  { dia:39, bloque:3, tema:"Dios conoce", libros:["Sa","Pr"], lecturas:["Sal 139","Pr 15:3","Pr 21:2"],
+    reflexion:"El Dios que te conoce del todo. ¿Eso te aterra o te consuela?",
+    conexion:"Pr 15:3 y 21:2 dicen en una línea lo que Sal 139 despliega en veintidós versículos." },
+  { dia:40, bloque:3, tema:"Clamor desde el fondo", libros:["Sa"], lecturas:["Sal 130","Sal 143","Sal 6"],
+    reflexion:"Salmos de angustia profunda. Léelos en voz alta si puedes.",
+    conexion:"Los tres siguen la misma estructura: caída, clamor, confianza." },
+  { dia:41, bloque:3, tema:"Justicia y reivindicación", libros:["Sa","Pr"], lecturas:["Sal 37:1–40","Sal 73","Pr 24:19–20"],
+    reflexion:"¿Por qué les va bien a los malos?",
+    conexion:"Sal 73 ya apareció en el día 11. ¿Cambió algo en tu lectura?" },
+  { dia:42, bloque:3, tema:"Restauración", libros:["Sa","Pr"], lecturas:["Sal 51","Sal 32","Pr 28:13"],
+    reflexion:"Sal 51 el gran salmo penitencial. Sal 32: la alegría de ser perdonado.",
+    conexion:"Pr 28:13 es el principio; Sal 51 su expresión más desnuda; Sal 32 su fruto." },
+  { dia:43, bloque:3, tema:"El rey ideal", libros:["Sa","Pr"], lecturas:["Sal 72","Sal 101","Pr 20:28","Pr 29:14"],
+    reflexion:"¿Qué es un buen líder? La Biblia tiene sus propios estándares.",
+    conexion:"Sal 72 describe al rey que cuida al pobre; Pr 20 y 29 la integridad que lo sostiene." },
+  { dia:44, bloque:4, tema:"Los grandes salmos de alabanza", libros:["Sa"], lecturas:["Sal 145","Sal 146","Sal 147"],
+    reflexion:"Los últimos cinco salmos son una crescente de alabanza. Llévalos despacio.",
+    conexion:"Sal 146:3–4 conecta con Ec sobre la vanidad de confiar en príncipes." },
+  { dia:45, bloque:4, tema:"Hacia el gran final", libros:["Sa"], lecturas:["Sal 148","Sal 149","Sal 150"],
+    reflexion:"Sal 150 cierra no con una respuesta sino con una aclamación. ¿Es suficiente?",
+    conexion:"La pregunta de Ec 1 termina en el Hallelujah de Sal 150." },
+  { dia:46, bloque:4, tema:"Volver al principio I", libros:["Ec","Pr","Sa"], lecturas:["Ec 1","Pr 1:1–7","Sal 1"],
+    reflexion:"Los tres textos de apertura de cada libro, ahora con todo el plan detrás.",
+    conexion:"Los tres libros abren con una invitación. Ahora sabes adónde llevan." },
+  { dia:47, bloque:4, tema:"Volver al principio II", libros:["Ec","Pr","Sa"], lecturas:["Ec 12","Pr 31:30","Sal 150"],
+    reflexion:"Los tres cierres. Los tres libros terminan en el mismo lugar por caminos distintos.",
+    conexion:"Ese es el plan." },
+  { dia:48, bloque:4, tema:"Síntesis personal", libros:["Ec","Pr","Sa"], lecturas:["Elige un capítulo de cada libro que te haya marcado"],
+    reflexion:"No hay lectura asignada. Elige tú. Tres capítulos que te hayan transformado.",
+    conexion:"Hoy el plan es tuyo. La conexión la pones tú." },
+  { dia:49, bloque:4, tema:"La pregunta final", libros:["Ec","Sa"], lecturas:["Ec 3:1–8","Sal 90","Sal 23"],
+    reflexion:"¿Qué sentido tiene todo esto? ¿Tienes una respuesta distinta ahora?",
+    conexion:"Ec 3 pone el tiempo en perspectiva; Sal 90 lo sitúa ante la eternidad; Sal 23 lo hace habitable." }
+];
+
+/* =====================================================================
+   ESTADO (localStorage)
+   ===================================================================== */
+const KEY_DONE  = "ps_done";    // {1:true,...}
+const KEY_NOTES = "ps_notes";   // {1:"texto",...}
+const KEY_CFG   = "ps_cfg";     // {notif:bool, time:"08:00"}
+
+const store = {
+  get done()  { return JSON.parse(localStorage.getItem(KEY_DONE)  || "{}"); },
+  set done(v) { localStorage.setItem(KEY_DONE, JSON.stringify(v)); },
+  get notes() { return JSON.parse(localStorage.getItem(KEY_NOTES) || "{}"); },
+  set notes(v){ localStorage.setItem(KEY_NOTES, JSON.stringify(v)); },
+  get cfg()   { return JSON.parse(localStorage.getItem(KEY_CFG) || '{"notif":false,"time":"08:00"}'); },
+  set cfg(v)  { localStorage.setItem(KEY_CFG, JSON.stringify(v)); }
+};
+
+/* =====================================================================
+   HELPERS
+   ===================================================================== */
+const $  = (s, r=document) => r.querySelector(s);
+const $$ = (s, r=document) => [...r.querySelectorAll(s)];
+const esc = (str) => String(str).replace(/[&<>"']/g, c => (
+  {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+function countDone() { const d = store.done; return Object.keys(d).filter(k => d[k]).length; }
+function countNotes() { const n = store.notes; return Object.keys(n).filter(k => (n[k]||"").trim()).length; }
+
+function currentStreak() {
+  // Racha = días consecutivos completados terminando en el último día completado.
+  const d = store.done;
+  const completed = PLAN.map(p => p.dia).filter(n => d[n]).sort((a,b)=>a-b);
+  if (!completed.length) return 0;
+  let best = 1, run = 1;
+  for (let i = 1; i < completed.length; i++) {
+    if (completed[i] === completed[i-1] + 1) { run++; best = Math.max(best, run); }
+    else run = 1;
+  }
+  return best;
+}
+
+function nextDay() {
+  const d = store.done;
+  const next = PLAN.find(p => !d[p.dia]);
+  return next ? next.dia : 49;
+}
+
+function badgesHTML(libros) {
+  return libros.map(l => {
+    const info = LIBRO[l]; if (!info) return "";
+    return `<span class="badge ${info.cls}">${esc(info.nombre)}</span>`;
+  }).join("");
+}
+
+/* =====================================================================
+   RENDER: HOME
+   ===================================================================== */
+function renderHome() {
+  const done = countDone();
+  const pct = Math.round(done / 49 * 100);
+  $("#homeBar").style.width = pct + "%";
+  $("#homeDone").textContent = done;
+  $("#homePct").textContent = pct + "%";
+
+  const nd = nextDay();
+  const ndp = PLAN[nd - 1];
+  $("#homeNextLabel").textContent = `Día ${ndp.dia} — ${ndp.tema}`;
+
+  $("#stDone").textContent   = done;
+  $("#stStreak").textContent = currentStreak();
+  $("#stNotes").textContent  = countNotes();
+
+  // bloques resumen
+  const d = store.done;
+  $("#homeBlocks").innerHTML = Object.keys(BLOQUES).map(bn => {
+    const b = BLOQUES[bn];
+    const dias = PLAN.filter(p => p.bloque == bn);
+    const hechos = dias.filter(p => d[p.dia]).length;
+    return `
+      <div class="block-head">
+        <span class="block-dot" style="background:var(${b.var})"></span>
+        <h3>${esc(b.titulo)}</h3>
+        <span class="rng">${hechos}/${dias.length}</span>
+      </div>`;
+  }).join("");
+}
+
+/* =====================================================================
+   RENDER: DAYS LIST
+   ===================================================================== */
+function renderDays() {
+  const d = store.done;
+  let html = "";
+  for (const bn of Object.keys(BLOQUES)) {
+    const b = BLOQUES[bn];
+    html += `
+      <div class="block-head">
+        <span class="block-dot" style="background:var(${b.var})"></span>
+        <h3>${esc(b.titulo)}</h3>
+        <span class="rng">${esc(b.rango)}</span>
+      </div>`;
+    for (const p of PLAN.filter(x => x.bloque == bn)) {
+      const isDone = !!d[p.dia];
+      html += `
+        <button class="daycard ${isDone ? "done" : ""}" style="--bl:var(${b.var})" data-day="${p.dia}">
+          <span class="dnum">${p.dia}</span>
+          <span class="dbody">
+            <span class="dtema">${esc(p.tema)}</span>
+            <span class="dmeta badges">${badgesHTML(p.libros)}</span>
+          </span>
+          <span class="dcheck">✓</span>
+        </button>`;
+    }
+  }
+  $("#daysList").innerHTML = html;
+  $$("#daysList .daycard").forEach(btn =>
+    btn.addEventListener("click", () => openDay(+btn.dataset.day)));
+}
+
+/* =====================================================================
+   RENDER: DAY DETAIL
+   ===================================================================== */
+let currentDay = 1;
+
+function openDay(n) {
+  currentDay = n;
+  const p = PLAN[n - 1];
+  const b = BLOQUES[p.bloque];
+  const isDone = !!store.done[n];
+  const noteVal = store.notes[n] || "";
+
+  $("#detailBody").innerHTML = `
+    <div class="detail-top">
+      <span class="dlabel">Día ${p.dia} · ${esc(b.rango.split("·")[0].trim())}</span>
+    </div>
+    <h1 class="detail-tema">${esc(p.tema)}</h1>
+    <div class="badges">${badgesHTML(p.libros)}</div>
+
+    <div class="readings">
+      ${p.lecturas.map(l => `<span class="reading-chip">${esc(l)}</span>`).join("")}
+    </div>
+
+    <div class="lead">Reflexión</div>
+    <p class="reflexion">${esc(p.reflexion)}</p>
+
+    <div class="lead">Conexión entre libros</div>
+    <div class="conexion" style="--bl:var(${b.var})">${esc(p.conexion)}</div>
+
+    <button class="mark-btn ${isDone ? "done" : ""}" id="markBtn">
+      ${isDone ? "✓ Completado" : "Marcar como completado"}
+    </button>
+
+    <div class="notes-label lead" style="margin-top:22px">
+      <span>Tus notas</span>
+      <span class="saved" id="savedTag">Guardado ✓</span>
+    </div>
+    <textarea class="notes" id="noteArea" placeholder="Escribe lo que esta lectura despertó en ti…">${esc(noteVal)}</textarea>
+
+    <div class="day-nav">
+      <button id="prevDay" ${n === 1 ? "disabled" : ""}>‹ Día ${n-1 || ""}</button>
+      <button id="nextDayBtn" ${n === 49 ? "disabled" : ""}>Día ${n+1 <= 49 ? n+1 : ""} ›</button>
+    </div>
+  `;
+
+  $("#markBtn").addEventListener("click", () => toggleDone(n));
+  $("#prevDay").addEventListener("click", () => n > 1 && openDay(n - 1));
+  $("#nextDayBtn").addEventListener("click", () => n < 49 && openDay(n + 1));
+
+  const area = $("#noteArea");
+  let t;
+  area.addEventListener("input", () => {
+    clearTimeout(t);
+    t = setTimeout(() => {
+      const notes = store.notes;
+      const v = area.value.trim();
+      if (v) notes[n] = area.value; else delete notes[n];
+      store.notes = notes;
+      const tag = $("#savedTag");
+      tag.classList.add("show");
+      setTimeout(() => tag.classList.remove("show"), 1200);
+    }, 400);
+  });
+
+  showScreen("detail", false);
+  window.scrollTo(0, 0);
+}
+
+function toggleDone(n) {
+  const done = store.done;
+  done[n] = !done[n];
+  if (!done[n]) delete done[n];
+  store.done = done;
+  const btn = $("#markBtn");
+  const isDone = !!store.done[n];
+  btn.classList.toggle("done", isDone);
+  btn.textContent = isDone ? "✓ Completado" : "Marcar como completado";
+  renderHome();
+  renderDays();
+}
+
+/* =====================================================================
+   NAVEGACIÓN ENTRE PANTALLAS
+   ===================================================================== */
+const SCREENS = { home:"#screen-home", days:"#screen-days", detail:"#screen-detail", settings:"#screen-settings" };
+
+function showScreen(name, syncTab = true) {
+  $$(".screen").forEach(s => s.classList.remove("active"));
+  $(SCREENS[name]).classList.add("active");
+  if (syncTab) {
+    $$(".tab").forEach(t => t.classList.toggle("active", t.dataset.tab === name));
+  }
+  if (name === "home") renderHome();
+  if (name === "days") renderDays();
+  window.scrollTo(0, 0);
+}
+
+$$(".tab").forEach(tab => {
+  tab.addEventListener("click", () => showScreen(tab.dataset.tab));
+});
+
+$("#detailBack").addEventListener("click", () => showScreen("days"));
+
+$("#goTodayBtn").addEventListener("click", () => openDay(nextDay()));
+
+/* =====================================================================
+   SETTINGS
+   ===================================================================== */
+let notifTimer = null;
+
+function applyCfgToUI() {
+  const c = store.cfg;
+  $("#notifToggle").checked = !!c.notif;
+  $("#notifTime").value = c.time || "08:00";
+}
+
+function scheduleNotification() {
+  if (notifTimer) { clearTimeout(notifTimer); notifTimer = null; }
+  const c = store.cfg;
+  if (!c.notif) return;
+  if (!("Notification" in window) || Notification.permission !== "granted") return;
+
+  const [h, m] = (c.time || "08:00").split(":").map(Number);
+  const now = new Date();
+  const target = new Date();
+  target.setHours(h, m, 0, 0);
+  if (target <= now) target.setDate(target.getDate() + 1);
+  const ms = target - now;
+
+  notifTimer = setTimeout(() => {
+    const nd = nextDay();
+    const p = PLAN[nd - 1];
+    try {
+      new Notification("Plan Sabiduría", {
+        body: `Hoy te toca el Día ${p.dia}: ${p.tema}`,
+        icon: "icons/icon-192.png"
+      });
+    } catch (e) {}
+    scheduleNotification(); // re-programa para el día siguiente
+  }, ms);
+}
+
+$("#notifToggle").addEventListener("change", async (e) => {
+  const c = store.cfg;
+  if (e.target.checked) {
+    if (!("Notification" in window)) {
+      alert("Este dispositivo no soporta notificaciones web.");
+      e.target.checked = false;
+      return;
+    }
+    let perm = Notification.permission;
+    if (perm !== "granted") perm = await Notification.requestPermission();
+    if (perm !== "granted") {
+      alert("Activa los permisos de notificación en Ajustes de Safari para recibir recordatorios.");
+      e.target.checked = false;
+      c.notif = false; store.cfg = c;
+      return;
+    }
+    c.notif = true;
+  } else {
+    c.notif = false;
+  }
+  store.cfg = c;
+  scheduleNotification();
+});
+
+$("#notifTime").addEventListener("change", (e) => {
+  const c = store.cfg;
+  c.time = e.target.value || "08:00";
+  store.cfg = c;
+  scheduleNotification();
+});
+
+$("#resetBtn").addEventListener("click", () => {
+  if (confirm("¿Borrar todo tu progreso y notas? Esta acción no se puede deshacer.")) {
+    localStorage.removeItem(KEY_DONE);
+    localStorage.removeItem(KEY_NOTES);
+    renderHome();
+    renderDays();
+    showScreen("home");
+    alert("Progreso reiniciado.");
+  }
+});
+
+/* =====================================================================
+   INIT
+   ===================================================================== */
+function init() {
+  renderHome();
+  renderDays();
+  applyCfgToUI();
+  scheduleNotification();
+
+  if ("serviceWorker" in navigator) {
+    navigator.serviceWorker.register("sw.js").catch(() => {});
+  }
+}
+init();
+</script>
+</body>
+</html>
