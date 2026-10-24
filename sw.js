@@ -2,10 +2,11 @@
    Cachea el app shell para uso offline. Sube CACHE_VERSION para forzar
    actualización cuando cambies index.html u otros archivos. */
 
-const CACHE_VERSION = "plan-sabiduria-v2";
+const CACHE_VERSION = "plan-sabiduria-v3";
+// Sin "./index.html": Cloudflare Pages lo redirige a "./" y Safari no abre
+// una navegación servida desde caché si la respuesta guardada es una redirección.
 const APP_SHELL = [
   "./",
-  "./index.html",
   "./manifest.json",
   "./config.js",
   "./sync.js",
@@ -48,11 +49,15 @@ self.addEventListener("fetch", (event) => {
     event.respondWith(
       fetch(req)
         .then((res) => {
-          const copy = res.clone();
-          caches.open(CACHE_VERSION).then((c) => c.put(req, copy));
+          // Solo se guarda la página real ("./"), nunca una redirección.
+          if (res.ok && res.type === "basic" && !res.redirected) {
+            const copy = res.clone();
+            caches.open(CACHE_VERSION).then((c) => c.put("./", copy));
+          }
           return res;
         })
-        .catch(() => caches.match(req).then((r) => r || caches.match("./index.html")))
+        // Sin red: siempre la app desde "./", también si se abrió como /index.html.
+        .catch(() => caches.match("./"))
     );
     return;
   }
