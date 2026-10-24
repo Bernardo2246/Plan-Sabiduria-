@@ -1,0 +1,3 @@
+.DS_Store
+# Respaldos de localStorage: datos personales, nunca al repo público
+backups/

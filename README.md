@@ -1,6 +1,6 @@
 # Plan Sabiduría 📖
 
-PWA (Progressive Web App) para seguir un plan de lectura bíblica de **49 días** que integra **Eclesiastés, Proverbios y Salmos**. Funciona offline, guarda tu progreso y notas en el dispositivo, y se instala en el iPhone desde Safari como una app nativa.
+PWA (Progressive Web App) para seguir un plan de lectura bíblica de **49 días** que integra **Eclesiastés, Proverbios y Salmos**. Funciona offline, sincroniza qué días completaste entre el iPhone y la Mac (Supabase) y se instala desde Safari como una app nativa. Las reflexiones se escriben en el diario de Obsidian, no en la app.
 
 ---
 
@@ -8,7 +8,11 @@ PWA (Progressive Web App) para seguir un plan de lectura bíblica de **49 días*
 
 ```
 plan-sabiduria/
-├── index.html        ← la app completa (HTML + CSS + JS)
+├── index.html        ← la app (HTML + CSS + JS)
+├── sync.js           ← sincronización con Supabase: cola sin conexión, Realtime, migración de la v1
+├── config.js         ← URL y anon key de Supabase (pública; los datos los protege RLS)
+├── vendor/supabase.js← supabase-js 2.117.1 (UMD), local para que abra sin red
+├── supabase/plan_progress.sql ← tabla, RLS, trigger de conflictos y Realtime (correr una vez)
 ├── manifest.json     ← metadatos de la PWA
 ├── sw.js             ← service worker (cache offline)
 ├── icons/
@@ -18,7 +22,16 @@ plan-sabiduria/
 └── README.md         ← este archivo
 ```
 
-> Sin backend, sin base de datos, sin frameworks. Todo vive en estos archivos.
+> Sin frameworks ni paso de build. El único backend es Supabase: el **mismo proyecto y el mismo usuario que Finanzas-Personales** (correo + contraseña, registro desactivado).
+
+## ☁️ Sincronización (v2)
+
+- Tabla `plan_progress` (`user_id`, `dia`, `done`, `completed_at`, `updated_at`), clave `(user_id, dia)`, RLS por usuario. Se crea corriendo `supabase/plan_progress.sql` en el SQL Editor.
+- Marcar un día actualiza la pantalla al instante y se encola en `localStorage` (`ps_queue`); la cola se envía al reconectar. En conflicto gana el `updated_at` más reciente (en la app y en el trigger del servidor); si ambos lados dicen "completado" se conserva la `completed_at` más antigua.
+- El otro dispositivo se entera por Realtime y, como iOS congela las PWA en segundo plano, también al volver a la app (`visibilitychange`/`focus`/`online`).
+- Al primer inicio de sesión en cada dispositivo se sube el `ps_done` de la v1 (unión de días). `ps_done` y `ps_notes` **no se borran** hasta confirmarlo.
+- La hora del recordatorio sigue siendo local de cada dispositivo (`ps_cfg`).
+- `backups/` está en `.gitignore`: ahí van los respaldos del `localStorage` (el repo es público).
 
 ---
 
@@ -62,7 +75,7 @@ plan-sabiduria/
 
 ### Notas para iPhone
 - **Funciona offline:** tras la primera carga, el service worker guarda la app; puedes abrirla sin internet.
-- **Progreso y notas** se guardan en `localStorage`, es decir, **solo en ese dispositivo y navegador**. Si borras los datos de Safari o desinstalas la app, se pierden.
+- **Progreso:** se guarda en Supabase y en una copia local para usarla sin red. La app de la pantalla de inicio tiene su propio almacenamiento, separado de Safari: hay que iniciar sesión dentro de la app instalada.
 - **Recordatorios:** iOS solo permite notificaciones web a PWAs **instaladas en la pantalla de inicio** (iOS 16.4+). Tras instalar, entra a **Ajustes → Recordatorio diario**, actívalo y acepta el permiso. El recordatorio se programa mientras la app esté abierta o en segundo plano reciente; iOS puede limitar notificaciones de apps cerradas por mucho tiempo.
 
 ---

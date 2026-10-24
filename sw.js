@@ -2,11 +2,14 @@
    Cachea el app shell para uso offline. Sube CACHE_VERSION para forzar
    actualización cuando cambies index.html u otros archivos. */
 
-const CACHE_VERSION = "plan-sabiduria-v1";
+const CACHE_VERSION = "plan-sabiduria-v2";
 const APP_SHELL = [
   "./",
   "./index.html",
   "./manifest.json",
+  "./config.js",
+  "./sync.js",
+  "./vendor/supabase.js",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
 ];

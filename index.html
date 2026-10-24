@@ -211,17 +211,23 @@ h2.section { font-size: 1.05rem; font-weight: 700; margin: 22px 0 12px; }
 .mark-btn.done { background: #1faf6a; border-color: #1faf6a; color: #fff; }
 .mark-btn:active { transform: scale(.98); }
 
-.notes-label { display: flex; align-items: center; justify-content: space-between; }
-.notes-label .saved { font-size: .78rem; color: #1faf6a; opacity: 0; transition: opacity .3s; }
-.notes-label .saved.show { opacity: 1; }
-textarea.notes {
-  width: 100%; min-height: 120px; resize: vertical;
+/* ---------- Login / sync ---------- */
+.field {
+  display: block; width: 100%; margin-top: 12px;
   border: 1px solid var(--border); border-radius: 12px;
   background: var(--surface); color: var(--text);
-  padding: 12px 14px; font-size: 1rem; font-family: inherit; line-height: 1.5;
-  margin-top: 6px;
+  padding: 13px 14px; font-size: 1rem; font-family: inherit;
 }
-textarea.notes:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.field:focus { outline: 2px solid var(--accent); border-color: transparent; }
+.cta:disabled { opacity: .6; }
+.form-msg { min-height: 1.4em; margin: 12px 0 0; font-size: .9rem; color: #d24b4b; }
+.sync-line { margin: -12px 0 16px; font-size: .85rem; color: var(--text-dim); }
+.ghost {
+  width: 100%; min-height: 48px; margin-top: 14px;
+  border: 1px solid var(--border); border-radius: 12px;
+  background: var(--surface); color: var(--text); font-weight: 700; font-size: 1rem;
+}
+body.logged-out .bottom-nav { display: none; }
 
 .day-nav { display: flex; gap: 10px; margin-top: 18px; }
 .day-nav button {
@@ -298,10 +304,23 @@ input[type="time"] {
 
 <div id="app">
 
+  <!-- ============ LOGIN ============ -->
+  <section id="screen-login" class="screen">
+    <h1 class="app-title">Plan Sabiduría</h1>
+    <p class="app-sub">Entra con tu cuenta de Finanzas para sincronizar tu avance entre el iPhone y la Mac.</p>
+    <form class="card pad" id="loginForm" novalidate>
+      <input class="field" type="email" id="loginEmail" placeholder="Correo" autocomplete="username" autocapitalize="off" required />
+      <input class="field" type="password" id="loginPass" placeholder="Contraseña" autocomplete="current-password" required />
+      <button class="cta" type="submit" id="loginBtn">Entrar</button>
+      <p class="form-msg" id="loginMsg"></p>
+    </form>
+  </section>
+
   <!-- ============ HOME / TODAY ============ -->
-  <section id="screen-home" class="screen active">
+  <section id="screen-home" class="screen">
     <h1 class="app-title">Plan Sabiduría</h1>
     <p class="app-sub">Eclesiastés · Proverbios · Salmos — 49 días</p>
+    <p class="sync-line hidden" id="syncLine"></p>
 
     <div class="card pad progress-wrap">
       <div class="progress-track"><div class="progress-bar" id="homeBar"></div></div>
@@ -320,7 +339,7 @@ input[type="time"] {
     <div class="stats">
       <div class="stat"><div class="num" id="stDone">0</div><div class="lbl">Completados</div></div>
       <div class="stat"><div class="num" id="stStreak">0</div><div class="lbl">Racha</div></div>
-      <div class="stat"><div class="num" id="stNotes">0</div><div class="lbl">Con nota</div></div>
+      <div class="stat"><div class="num" id="stLeft">49</div><div class="lbl">Faltan</div></div>
     </div>
 
     <h2 class="section">Los cuatro bloques</h2>
@@ -330,7 +349,7 @@ input[type="time"] {
   <!-- ============ DAYS LIST ============ -->
   <section id="screen-days" class="screen">
     <h1 class="app-title">Los 49 días</h1>
-    <p class="app-sub">Toca un día para abrir su lectura y notas</p>
+    <p class="app-sub">Toca un día para abrir su lectura</p>
     <div id="daysList"></div>
   </section>
 
@@ -365,10 +384,23 @@ input[type="time"] {
       </div>
     </div>
 
-    <button class="danger" id="resetBtn">Resetear todo el progreso</button>
+    <h2 class="section">Cuenta</h2>
+    <div class="card pad">
+      <div class="row">
+        <div class="rlbl">
+          <div class="t" id="accountEmail">—</div>
+          <div class="s" id="syncState">—</div>
+        </div>
+      </div>
+    </div>
+    <button class="ghost" id="syncBtn">Sincronizar ahora</button>
+    <button class="ghost" id="logoutBtn">Cerrar sesión</button>
+
+    <button class="danger" id="resetBtn">Desmarcar todos los días</button>
 
     <div class="settings-foot">
-      Plan Sabiduría · v1 · Tus datos se guardan solo en este dispositivo.
+      Plan Sabiduría · v2 · Tu avance se sincroniza entre tus dispositivos.<br />
+      El recordatorio es de cada dispositivo.
     </div>
   </section>
 
@@ -390,6 +422,9 @@ input[type="time"] {
   </button>
 </nav>
 
+<script src="vendor/supabase.js"></script>
+<script src="config.js"></script>
+<script src="sync.js"></script>
 <script>
 /* =====================================================================
    DATOS DEL PLAN — 49 días
@@ -558,17 +593,16 @@ const PLAN = [
 ];
 
 /* =====================================================================
-   ESTADO (localStorage)
+   ESTADO
+   El avance vive en Supabase (sync.js); la configuración sigue local por
+   dispositivo. ps_done / ps_notes de la v1 ya no se leen ni se borran aquí.
    ===================================================================== */
-const KEY_DONE  = "ps_done";    // {1:true,...}
-const KEY_NOTES = "ps_notes";   // {1:"texto",...}
-const KEY_CFG   = "ps_cfg";     // {notif:bool, time:"08:00"}
+const KEY_CFG = "ps_cfg";     // {notif:bool, time:"08:00"}
+
+let sync = null;              // instancia de PSync mientras hay sesión
 
 const store = {
-  get done()  { return JSON.parse(localStorage.getItem(KEY_DONE)  || "{}"); },
-  set done(v) { localStorage.setItem(KEY_DONE, JSON.stringify(v)); },
-  get notes() { return JSON.parse(localStorage.getItem(KEY_NOTES) || "{}"); },
-  set notes(v){ localStorage.setItem(KEY_NOTES, JSON.stringify(v)); },
+  get done()  { return sync ? sync.doneMap() : {}; },
   get cfg()   { return JSON.parse(localStorage.getItem(KEY_CFG) || '{"notif":false,"time":"08:00"}'); },
   set cfg(v)  { localStorage.setItem(KEY_CFG, JSON.stringify(v)); }
 };
@@ -582,7 +616,6 @@ const esc = (str) => String(str).replace(/[&<>"']/g, c => (
   {"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
 function countDone() { const d = store.done; return Object.keys(d).filter(k => d[k]).length; }
-function countNotes() { const n = store.notes; return Object.keys(n).filter(k => (n[k]||"").trim()).length; }
 
 function currentStreak() {
   // Racha = días consecutivos completados terminando en el último día completado.
@@ -626,7 +659,7 @@ function renderHome() {
 
   $("#stDone").textContent   = done;
   $("#stStreak").textContent = currentStreak();
-  $("#stNotes").textContent  = countNotes();
+  $("#stLeft").textContent   = 49 - done;
 
   // bloques resumen
   const d = store.done;
@@ -685,7 +718,6 @@ function openDay(n) {
   const p = PLAN[n - 1];
   const b = BLOQUES[p.bloque];
   const isDone = !!store.done[n];
-  const noteVal = store.notes[n] || "";
 
   $("#detailBody").innerHTML = `
     <div class="detail-top">
@@ -708,12 +740,6 @@ function openDay(n) {
       ${isDone ? "✓ Completado" : "Marcar como completado"}
     </button>
 
-    <div class="notes-label lead" style="margin-top:22px">
-      <span>Tus notas</span>
-      <span class="saved" id="savedTag">Guardado ✓</span>
-    </div>
-    <textarea class="notes" id="noteArea" placeholder="Escribe lo que esta lectura despertó en ti…">${esc(noteVal)}</textarea>
-
     <div class="day-nav">
       <button id="prevDay" ${n === 1 ? "disabled" : ""}>‹ Día ${n-1 || ""}</button>
       <button id="nextDayBtn" ${n === 49 ? "disabled" : ""}>Día ${n+1 <= 49 ? n+1 : ""} ›</button>
@@ -724,42 +750,31 @@ function openDay(n) {
   $("#prevDay").addEventListener("click", () => n > 1 && openDay(n - 1));
   $("#nextDayBtn").addEventListener("click", () => n < 49 && openDay(n + 1));
 
-  const area = $("#noteArea");
-  let t;
-  area.addEventListener("input", () => {
-    clearTimeout(t);
-    t = setTimeout(() => {
-      const notes = store.notes;
-      const v = area.value.trim();
-      if (v) notes[n] = area.value; else delete notes[n];
-      store.notes = notes;
-      const tag = $("#savedTag");
-      tag.classList.add("show");
-      setTimeout(() => tag.classList.remove("show"), 1200);
-    }, 400);
-  });
-
   showScreen("detail", false);
   window.scrollTo(0, 0);
 }
 
 function toggleDone(n) {
-  const done = store.done;
-  done[n] = !done[n];
-  if (!done[n]) delete done[n];
-  store.done = done;
-  const btn = $("#markBtn");
-  const isDone = !!store.done[n];
-  btn.classList.toggle("done", isDone);
-  btn.textContent = isDone ? "✓ Completado" : "Marcar como completado";
+  if (!sync) return;
+  sync.setDone(n, !store.done[n]); // dispara refreshAll() vía onChange
+}
+
+// Repinta todo lo que depende del avance (cambio local, Realtime o al volver a la app).
+function refreshAll() {
   renderHome();
   renderDays();
+  const btn = $("#markBtn");
+  if (btn && $("#screen-detail").classList.contains("active")) {
+    const isDone = !!store.done[currentDay];
+    btn.classList.toggle("done", isDone);
+    btn.textContent = isDone ? "✓ Completado" : "Marcar como completado";
+  }
 }
 
 /* =====================================================================
    NAVEGACIÓN ENTRE PANTALLAS
    ===================================================================== */
-const SCREENS = { home:"#screen-home", days:"#screen-days", detail:"#screen-detail", settings:"#screen-settings" };
+const SCREENS = { login:"#screen-login", home:"#screen-home", days:"#screen-days", detail:"#screen-detail", settings:"#screen-settings" };
 
 function showScreen(name, syncTab = true) {
   $$(".screen").forEach(s => s.classList.remove("active"));
@@ -849,28 +864,143 @@ $("#notifTime").addEventListener("change", (e) => {
 });
 
 $("#resetBtn").addEventListener("click", () => {
-  if (confirm("¿Borrar todo tu progreso y notas? Esta acción no se puede deshacer.")) {
-    localStorage.removeItem(KEY_DONE);
-    localStorage.removeItem(KEY_NOTES);
-    renderHome();
-    renderDays();
+  if (!sync) return;
+  if (confirm("¿Desmarcar todos los días? Se aplica en todos tus dispositivos.")) {
+    for (const dia of Object.keys(store.done)) sync.setDone(Number(dia), false);
     showScreen("home");
-    alert("Progreso reiniciado.");
   }
+});
+
+/* =====================================================================
+   SESIÓN Y SINCRONIZACIÓN
+   Mismo proyecto y usuario de Supabase que Finanzas-Personales (correo +
+   contraseña, registro desactivado). La sesión queda guardada en el
+   dispositivo, así que la app abre sin red una vez que entraste.
+   ===================================================================== */
+const AUTH_KEY = "ps_auth";
+const sb = window.supabase.createClient(PS_CONFIG.url, PS_CONFIG.anonKey, {
+  auth: { persistSession: true, autoRefreshToken: true, detectSessionInUrl: false, storageKey: AUTH_KEY, storage: window.localStorage }
+});
+
+// Sin red y con el token vencido, getSession() puede no devolver nada aunque
+// la sesión siga guardada: en ese caso se usa la guardada para trabajar en cola.
+function storedUser() {
+  try {
+    const s = JSON.parse(localStorage.getItem(AUTH_KEY) || "null");
+    const u = s?.user || JSON.parse(localStorage.getItem(AUTH_KEY + "-user") || "null")?.user;
+    return u?.id ? u : null;
+  } catch (e) { return null; }
+}
+
+async function currentUser() {
+  try {
+    const { data } = await Promise.race([
+      sb.auth.getSession(),
+      new Promise(res => setTimeout(() => res({ data: {} }), 4000))
+    ]);
+    if (data?.session?.user) return data.session.user;
+  } catch (e) {}
+  return storedUser();
+}
+
+function renderSyncStatus(st) {
+  const n = st.pending;
+  const pend = n ? `${n} ${n === 1 ? "cambio" : "cambios"} por enviar` : "";
+  const problem = !st.online ? "Sin conexión" : st.error ? "No se pudo sincronizar" : "";
+  const line = [problem, pend].filter(Boolean).join(" · ");
+  $("#syncLine").textContent = line;
+  $("#syncLine").classList.toggle("hidden", !line);
+
+  let state = "Sincronizado";
+  if (!st.online) state = n ? `Sin conexión · ${pend}; se envían al reconectar` : "Sin conexión";
+  else if (st.error) state = `No se pudo sincronizar (${st.error})${n ? ` · ${pend}` : ""}`;
+  else if (n) state = `Enviando ${pend.replace(" por enviar", "")}…`;
+  else if (st.lastSync) state = `Sincronizado a las ${new Date(st.lastSync).toLocaleTimeString("es-MX", { hour: "2-digit", minute: "2-digit" })}`;
+  $("#syncState").textContent = state;
+}
+
+function startSync(user) {
+  if (sync) sync.stop();
+  sync = PSync.createSync({
+    client: sb,
+    storage: localStorage,
+    userId: user.id,
+    onChange: refreshAll,
+    onStatus: renderSyncStatus
+  });
+  $("#accountEmail").textContent = user.email || "Sesión iniciada";
+  document.body.classList.remove("logged-out");
+  sync.migrateLegacy();
+  refreshAll();
+  showScreen("home");
+  sync.subscribe();   // al quedar suscrito hace la primera sincronización
+  sync.syncNow();
+}
+
+function showLogin() {
+  if (sync) { sync.stop(); sync = null; }
+  document.body.classList.add("logged-out");
+  $("#loginMsg").textContent = "";
+  showScreen("login", false);
+}
+
+// iOS congela las PWA en segundo plano: al volver se envía la cola y se trae lo nuevo.
+function resync() { if (sync) sync.syncNow(); }
+document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") resync(); });
+window.addEventListener("focus", resync);
+window.addEventListener("pageshow", resync);
+window.addEventListener("online", resync);
+window.addEventListener("offline", () => sync && sync.setOnline(false));
+
+$("#loginForm").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const email = $("#loginEmail").value.trim();
+  const password = $("#loginPass").value;
+  const msg = $("#loginMsg"), btn = $("#loginBtn");
+  if (!email || !password) { msg.textContent = "Escribe tu correo y tu contraseña."; return; }
+  if (!navigator.onLine) { msg.textContent = "Necesitas conexión para entrar la primera vez."; return; }
+  btn.disabled = true; msg.textContent = "";
+  try {
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if (error) {
+      msg.textContent = /invalid/i.test(error.message) ? "Correo o contraseña incorrectos." : `No se pudo entrar: ${error.message}`;
+      return;
+    }
+    $("#loginPass").value = "";
+    startSync(data.user);
+  } catch (err) {
+    msg.textContent = "No se pudo conectar. Revisa tu conexión e intenta de nuevo.";
+  } finally {
+    btn.disabled = false;
+  }
+});
+
+$("#syncBtn").addEventListener("click", resync);
+
+$("#logoutBtn").addEventListener("click", async () => {
+  const pending = sync ? sync.status().pending : 0;
+  if (pending && !confirm(`Hay ${pending} cambios sin enviar. Se enviarán la próxima vez que entres en este dispositivo. ¿Cerrar sesión?`)) return;
+  try { await sb.auth.signOut({ scope: "local" }); } catch (e) {}
+  showLogin();
+});
+
+sb.auth.onAuthStateChange((event) => {
+  if (event === "SIGNED_OUT" && sync) showLogin();
 });
 
 /* =====================================================================
    INIT
    ===================================================================== */
-function init() {
-  renderHome();
-  renderDays();
+async function init() {
   applyCfgToUI();
   scheduleNotification();
 
   if ("serviceWorker" in navigator) {
     navigator.serviceWorker.register("sw.js").catch(() => {});
   }
+
+  const user = await currentUser();
+  if (user) startSync(user); else showLogin();
 }
 init();
 </script>
