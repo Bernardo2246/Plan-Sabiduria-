@@ -29,7 +29,7 @@ plan-sabiduria/
 - Tabla `plan_progress` (`user_id`, `dia`, `done`, `completed_at`, `updated_at`), clave `(user_id, dia)`, RLS por usuario. Se crea corriendo `supabase/plan_progress.sql` en el SQL Editor.
 - Marcar un día actualiza la pantalla al instante y se encola en `localStorage` (`ps_queue`); la cola se envía al reconectar. En conflicto gana el `updated_at` más reciente (en la app y en el trigger del servidor); si ambos lados dicen "completado" se conserva la `completed_at` más antigua.
 - El otro dispositivo se entera por Realtime y, como iOS congela las PWA en segundo plano, también al volver a la app (`visibilitychange`/`focus`/`online`).
-- Al primer inicio de sesión en cada dispositivo se sube el `ps_done` de la v1 (unión de días). `ps_done` y `ps_notes` **no se borran** hasta confirmarlo.
+- Al primer inicio de sesión en cada dispositivo se sube el `ps_done` de la v1 (unión de días). Bernardo confirmó la sincronización el 2026-10-24: desde entonces `ps_done` y `ps_notes` se borran solos en cada dispositivo después de migrar, cuando ya no queda nada por enviar (respaldos en `backups/`).
 - La hora del recordatorio sigue siendo local de cada dispositivo (`ps_cfg`).
 - `backups/` está en `.gitignore`: ahí van los respaldos del `localStorage` (el repo es público).
 

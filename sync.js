@@ -4,7 +4,7 @@
      ps_progress  {dia: {dia, done, completed_at, updated_at}}  última versión conocida de cada día
      ps_queue     {dia: fila}                                   cambios que el servidor aún no confirma
      ps_migrated  user_id que ya subió el ps_done heredado de la v1
-   ps_done / ps_notes (v1) NO se tocan: quedan como respaldo hasta que Bernardo confirme.
+   ps_done / ps_notes (v1) se borran solos tras migrar y sincronizar sin pendientes (dropLegacy).
 
    Reglas:
      - Marcar un día cambia la pantalla al instante y se encola; la cola se envía en cuanto hay red.
@@ -14,7 +14,7 @@
 (function (root) {
   "use strict";
 
-  const K = { progress: "ps_progress", queue: "ps_queue", migrated: "ps_migrated", legacyDone: "ps_done" };
+  const K = { progress: "ps_progress", queue: "ps_queue", migrated: "ps_migrated", legacyDone: "ps_done", legacyNotes: "ps_notes" };
   const MIGRATION_TS = "2026-10-12T06:00:00.000Z"; // inicio del plan (00:00 CDMX)
   const TABLE = "plan_progress";
   const COLS = "dia,done,completed_at,updated_at";
@@ -132,10 +132,20 @@
         ok();
         status.lastSync = now();
         if (changed) onChange();
+        dropLegacy();
       } catch (e) {
         fail(e);
       }
       emitStatus();
+    }
+
+    // Bernardo confirmó el 2026-10-24 que la sincronización funciona en ambos dispositivos:
+    // la v1 se borra en cuanto este dispositivo ya migró y el servidor no tiene nada pendiente de él.
+    // (Respaldos de ambos en backups/ del repo, fuera de git.)
+    function dropLegacy() {
+      if (storage.getItem(K.migrated) !== userId || Object.keys(read(K.queue)).length) return;
+      storage.removeItem(K.legacyDone);
+      storage.removeItem(K.legacyNotes);
     }
 
     // Primero se envía lo pendiente y luego se trae lo del otro dispositivo.

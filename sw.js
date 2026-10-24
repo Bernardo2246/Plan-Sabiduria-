@@ -2,7 +2,7 @@
    Cachea el app shell para uso offline. Sube CACHE_VERSION para forzar
    actualización cuando cambies index.html u otros archivos. */
 
-const CACHE_VERSION = "plan-sabiduria-v3";
+const CACHE_VERSION = "plan-sabiduria-v4";
 // Sin "./index.html": Cloudflare Pages lo redirige a "./" y Safari no abre
 // una navegación servida desde caché si la respuesta guardada es una redirección.
 const APP_SHELL = [
