@@ -1,0 +1,12 @@
+{
+  "name": "plan-sabiduria-scripts",
+  "private": true,
+  "description": "Scripts locales de la Mac (no los usa la app publicada). La raíz del repo no tiene package.json a propósito: Cloudflare Pages publica la raíz tal cual.",
+  "type": "module",
+  "scripts": {
+    "sync:obsidian": "node sync-obsidian.mjs"
+  },
+  "dependencies": {
+    "pg": "8.23.1"
+  }
+}

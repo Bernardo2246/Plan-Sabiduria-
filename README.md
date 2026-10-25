@@ -107,3 +107,34 @@ Luego abre http://localhost:8000 en tu navegador.
 ---
 
 Hecho con HTML, CSS y JavaScript puro. Sin dependencias.
+
+---
+
+## 🗂️ Sincronización con Obsidian (solo en la Mac)
+
+`scripts/sync-obsidian.mjs` lee `plan_progress` con el rol de **solo lectura** `obsidian_reader` (el mismo de Finanzas-Personales) y escribe en la bóveda "Segundo Cerebro":
+
+- En `04 Proyectos/plan-sabiduria/días/` cambia **solo** las propiedades `realizado` y `fecha` de cada nota. `fecha` = día de completado en la app (hora de CDMX). Si un día no está completado, su `fecha` se deja como esté. El texto y los embeds del diario no se tocan.
+- Regenera `04 Proyectos/plan-sabiduria/Progreso.md`: avance, racha actual y más larga (días de calendario), días completados sin reflexión en `06 Diario/<fecha>.md` → «Aprendizaje o idea», y enlaces a los 49 días.
+- Idempotente: si nada cambió, no escribe. No pisa una nota que cambió mientras se editaba. Si Supabase devuelve 0 filas (p. ej. falta el permiso), aborta sin tocar la bóveda.
+- La escritura en la bóveda usa el módulo genérico `~/Developer/Finanzas-Personales/scripts/obsidian/boveda.mjs`; no hay copia aquí.
+
+Configuración (una vez):
+1. Correr `supabase/obsidian_reader.sql` en el SQL Editor (permiso de lectura sobre `plan_progress`).
+2. `cp .env.example .env` y poner la misma `SUPABASE_READER_DB_URL` del `.env.sync` de Finanzas.
+3. `cd scripts && npm install`.
+
+Instalar el LaunchAgent (corre al iniciar sesión y cada 30 min mientras la Mac está encendida):
+```bash
+cp scripts/launchd/com.bernardo.plan-sabiduria-obsidian.plist ~/Library/LaunchAgents/
+launchctl bootstrap gui/$(id -u) ~/Library/LaunchAgents/com.bernardo.plan-sabiduria-obsidian.plist
+```
+Correrlo ya: `launchctl kickstart gui/$(id -u)/com.bernardo.plan-sabiduria-obsidian` · Log: `~/Library/Logs/plan-sabiduria-obsidian.log`
+
+Desinstalar:
+```bash
+launchctl bootout gui/$(id -u)/com.bernardo.plan-sabiduria-obsidian
+rm ~/Library/LaunchAgents/com.bernardo.plan-sabiduria-obsidian.plist
+```
+
+Pruebas sin tocar Supabase ni la bóveda: `node scripts/sync-obsidian.mjs --boveda /tmp/boveda --prueba datos.json` con `{"filas": [{"user_id", "dia", "done", "completed_at", "updated_at"}], "ahora": "ISO"}`.

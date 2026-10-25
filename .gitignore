@@ -1,3 +1,7 @@
 .DS_Store
 # Respaldos de localStorage: datos personales, nunca al repo público
 backups/
+
+# Scripts locales (scripts/sync-obsidian.mjs)
+.env
+scripts/node_modules/

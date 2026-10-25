@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!-- Sincroniza Plan Sabiduría → Obsidian cada 30 min y al iniciar sesión (la Mac se apaga de noche).
+     Instalar/desinstalar: ver la sección "Sincronización con Obsidian" del README. -->
+<plist version="1.0">
+<dict>
+  <key>Label</key>
+  <string>com.bernardo.plan-sabiduria-obsidian</string>
+  <key>ProgramArguments</key>
+  <array>
+    <string>/bin/sh</string>
+    <string>/Users/bernardo/Developer/plan-sabiduria/scripts/sync-obsidian.sh</string>
+  </array>
+  <key>StartInterval</key>
+  <integer>1800</integer>
+  <key>RunAtLoad</key>
+  <true/>
+  <key>StandardOutPath</key>
+  <string>/Users/bernardo/Library/Logs/plan-sabiduria-obsidian.log</string>
+  <key>StandardErrorPath</key>
+  <string>/Users/bernardo/Library/Logs/plan-sabiduria-obsidian.log</string>
+</dict>
+</plist>
